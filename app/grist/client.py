@@ -2,7 +2,15 @@ from urllib.parse import quote
 
 import httpx
 
-from app.grist.models import ColumnDef, GristColumn, GristColumnsResponse, GristTablesResponse
+from app.grist.models import (
+    ColumnDef,
+    GemRowDef,
+    GristColumn,
+    GristColumnsResponse,
+    GristRecord,
+    GristRecordsResponse,
+    GristTablesResponse,
+)
 
 
 class GristClient:
@@ -91,4 +99,54 @@ class GristClient:
         self._request(
             "DELETE",
             f"/docs/{quote(doc_id)}/tables/{quote(table_id)}/columns/{quote(col_id)}",
+        )
+
+    def list_records(self, doc_id: str, table_id: str) -> list[GristRecord]:
+        response = self._request(
+            "GET", f"/docs/{quote(doc_id)}/tables/{quote(table_id)}/records"
+        )
+        parsed = GristRecordsResponse.model_validate(response.json())
+        return parsed.records
+
+    def create_records(self, doc_id: str, table_id: str, rows: list[GemRowDef]) -> None:
+        body = {"records": [{"fields": row.to_fields()} for row in rows]}
+        self._request(
+            "POST", f"/docs/{quote(doc_id)}/tables/{quote(table_id)}/records", json=body
+        )
+
+    def update_records(
+        self, doc_id: str, table_id: str, rows: list[tuple[int, GemRowDef]]
+    ) -> None:
+        """Overwrite the managed fields of existing rows, identified by row id."""
+        body = {
+            "records": [
+                {"id": row_id, "fields": row.to_fields()} for row_id, row in rows
+            ]
+        }
+        self._request(
+            "PATCH", f"/docs/{quote(doc_id)}/tables/{quote(table_id)}/records", json=body
+        )
+
+    def update_record_fields(
+        self, doc_id: str, table_id: str, updates: list[tuple[int, dict]]
+    ) -> None:
+        """Patch arbitrary fields on existing rows, identified by row id.
+
+        The caller owns the contents of each `fields` dict and must not include
+        formula columns — Grist computes those, and writing them would clobber
+        the formula.
+        """
+        body = {
+            "records": [{"id": row_id, "fields": fields} for row_id, fields in updates]
+        }
+        self._request(
+            "PATCH", f"/docs/{quote(doc_id)}/tables/{quote(table_id)}/records", json=body
+        )
+
+    def delete_records(self, doc_id: str, table_id: str, row_ids: list[int]) -> None:
+        """Delete rows by id. The Grist API expects a bare array of row ids."""
+        self._request(
+            "POST",
+            f"/docs/{quote(doc_id)}/tables/{quote(table_id)}/records/delete",
+            json=row_ids,
         )

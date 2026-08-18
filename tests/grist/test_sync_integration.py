@@ -1,14 +1,29 @@
-from app.grist.models import GEM_TABLE_SCHEME, ColumnDef, GristColumn, GristColumnFields
-from app.grist.sync import sync_gem_table_schema
+from app.grist.models import (
+    FLAWED_NAME_COL,
+    FLAWLESS_NAME_COL,
+    GEM_TABLE_ROWS,
+    GEM_TABLE_SCHEME,
+    ColumnDef,
+    GristColumn,
+    GristColumnFields,
+    GristRecord,
+)
+from app.grist.sync import sync_gem_table_records, sync_gem_table_schema
 
 DOC_ID = "docABC"
 TABLE_ID = "gem"
 
 
 class FakeGristClient:
-    def __init__(self, table_exists: bool, columns: list[GristColumn]):
+    def __init__(
+        self,
+        table_exists: bool,
+        columns: list[GristColumn],
+        records: list[GristRecord] | None = None,
+    ):
         self._table_exists = table_exists
         self._columns = columns
+        self._records = records if records is not None else []
         self.calls: list[tuple] = []
 
     def table_exists(self, doc_id, table_id):
@@ -30,6 +45,32 @@ class FakeGristClient:
 
     def delete_column(self, doc_id, table_id, col_id):
         self.calls.append(("delete_column", doc_id, table_id, col_id))
+
+    def list_records(self, doc_id, table_id):
+        self.calls.append(("list_records", doc_id, table_id))
+        return self._records
+
+    def create_records(self, doc_id, table_id, rows):
+        self.calls.append(("create_records", doc_id, table_id, rows))
+
+    def update_records(self, doc_id, table_id, rows):
+        self.calls.append(("update_records", doc_id, table_id, rows))
+
+    def delete_records(self, doc_id, table_id, row_ids):
+        self.calls.append(("delete_records", doc_id, table_id, row_ids))
+
+
+def _record(row_id: int, flawed: str, flawless: str) -> GristRecord:
+    return GristRecord(
+        id=row_id, fields={FLAWED_NAME_COL: flawed, FLAWLESS_NAME_COL: flawless}
+    )
+
+
+def _in_sync_records() -> list[GristRecord]:
+    return [
+        _record(index, row.flawed_gem_name, row.flawless_gem_name)
+        for index, row in enumerate(GEM_TABLE_ROWS, start=1)
+    ]
 
 
 def test_creates_table_when_missing():
@@ -87,4 +128,48 @@ def test_no_op_when_already_in_sync():
 
     op_names = [c[0] for c in client.calls]
     assert op_names == ["table_exists", "list_columns"]
+    assert diff.is_empty()
+
+
+def test_records_sync_adds_all_when_empty():
+    client = FakeGristClient(table_exists=True, columns=[], records=[])
+
+    diff = sync_gem_table_records(client, DOC_ID, TABLE_ID)
+
+    op_names = [c[0] for c in client.calls]
+    assert op_names == ["list_records", "create_records"]
+    assert client.calls[1][3] == GEM_TABLE_ROWS
+    assert diff.to_add == GEM_TABLE_ROWS
+
+
+def test_records_sync_applies_delete_add_update_in_order():
+    records = [
+        _record(1, "FLAWED_RUBY_GEM", "FLAWLESS_RUBY_GEM"),
+        _record(2, GEM_TABLE_ROWS[0].flawed_gem_name, "WRONG_NAME"),
+    ]
+    client = FakeGristClient(table_exists=True, columns=[], records=records)
+
+    diff = sync_gem_table_records(client, DOC_ID, TABLE_ID)
+
+    op_names = [c[0] for c in client.calls]
+    assert op_names == [
+        "list_records",
+        "delete_records",
+        "create_records",
+        "update_records",
+    ]
+    assert diff.to_delete == [1]
+    assert diff.to_update == [(2, GEM_TABLE_ROWS[0])]
+    assert diff.to_add == GEM_TABLE_ROWS[1:]
+
+
+def test_records_sync_is_noop_when_in_sync():
+    client = FakeGristClient(
+        table_exists=True, columns=[], records=_in_sync_records()
+    )
+
+    diff = sync_gem_table_records(client, DOC_ID, TABLE_ID)
+
+    op_names = [c[0] for c in client.calls]
+    assert op_names == ["list_records"]
     assert diff.is_empty()

@@ -8,4 +8,7 @@ class Settings(BaseSettings):
     grist_doc_id: str
     grist_gem_table_name: str = "Gem"
 
+    # Public endpoint: no API key is required.
+    hypixel_bazaar_url: str = "https://api.hypixel.net/v2/skyblock/bazaar"
+
 settings = Settings()
