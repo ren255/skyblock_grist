@@ -1,0 +1,36 @@
+services:
+  app:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      GRIST_URL: http://grist:8080
+    depends_on:
+      - grist
+
+  grist:
+    image: gristlabs/grist:latest
+    env_file:
+      - .env
+    environment:
+      PORT: 8080
+      TYPEORM_DATABASE: ${POSTGRES_DB}
+      TYPEORM_USERNAME: ${POSTGRES_USER}
+      TYPEORM_PASSWORD: ${POSTGRES_PASSWORD}
+      TYPEORM_HOST: database
+      TYPEORM_PORT: 5432
+      TYPEORM_TYPE: postgres
+    volumes:
+      - ./data:/persist
+    ports:
+      - "3000:8080"
+    depends_on:
+      - database
+
+  database:
+    image: postgres:15-alpine
+    env_file:
+      - .env
+    volumes:
+      - ./database/data:/var/lib/postgresql/data
+
