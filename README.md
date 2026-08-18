@@ -15,3 +15,10 @@ docker compose up --build
 ```sh
 docker compose down
 ```
+
+local IDEのため
+```
+python -m venv .venv
+source .venv/bin/activate
+pip install -e .
+```
