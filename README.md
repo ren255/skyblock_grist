@@ -1,17 +1,21 @@
-# Quickstart
+# skyblock flip
 
-Docker と Docker Compose が必要です。
+Bazzarで利益高いFLIPを検出するスクリプト。
+- FLIP: buy order -> sell orderの差
+- COMPACT FLIP: itemを圧縮し上位itemで売り直す instant sellで利益が出ることもある
 
-```sh
-cp .env.example .env
-docker compose up --build
-```
+金額、利益率、BUY/SELL予測時間が大事。
 
-- アプリ: http://localhost:8000/health
-- Grist: http://localhost:3000
-
-停止する場合:
+## Quickstart
 
 ```sh
-docker compose down
+python -m venv .venv
+source .venv/bin/activate
+pip install -e .
 ```
+
+## Structure
+
+appがnb内でもimportできる。
+NotEnoughUpdates-REPO/からレシピを取得し、公式APIからbazaar情報を取得している。
+pandas/pydynamicを使用してデータを管理してる。
