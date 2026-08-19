@@ -1,24 +1,8 @@
 # Quickstart
 
-Docker と Docker Compose が必要です。
-
-```sh
-cp .env.example .env
-docker compose up --build
+```bash
+$ cp .env.example .env
 ```
 
-- アプリ: http://localhost:8000/health
-- Grist: http://localhost:3000
+`.env`ファイルに適切な値を入力
 
-停止する場合:
-
-```sh
-docker compose down
-```
-
-local IDEのため
-```
-python -m venv .venv
-source .venv/bin/activate
-pip install -e .
-```

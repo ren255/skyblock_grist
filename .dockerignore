@@ -1,8 +1,0 @@
-.git
-.agents
-.codex
-.env
-data
-database/data
-__pycache__
-*.py[cod]
