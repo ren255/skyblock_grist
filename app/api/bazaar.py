@@ -1,14 +1,10 @@
 """Fetch and tabularise Hypixel's Bazaar quick status data."""
 
-from enum import StrEnum
-from typing import Any, Literal, overload
-
+from typing import Any
 import pandas as pd
 
 BAZAAR_URL = "https://api.hypixel.net/v2/skyblock/bazaar"
-# Public column list: importing this gives editors a discoverable list of fields.
-
-BazaarColumn = Literal[
+columns = [
     "item_id",
     "buyPrice",
     "buyVolume",
@@ -19,39 +15,12 @@ BazaarColumn = Literal[
     "buyOrders",
     "sellOrders",
 ]
-
-
-class BazaarColumns(StrEnum):
-    item_id = "item_id"
-    buyPrice = "buyPrice"
-    buyVolume = "buyVolume"
-    sellPrice = "sellPrice"
-    sellVolume = "sellVolume"
-    buyMovingWeek = "buyMovingWeek"
-    sellMovingWeek = "sellMovingWeek"
-    buyOrders = "buyOrders"
-    sellOrders = "sellOrders"
-
-
-class BazaarDataFrame(pd.DataFrame):
-    @property
-    def _constructor(self) -> type["BazaarDataFrame"]:
-        return BazaarDataFrame
-
-    @overload
-    def __getitem__(self, key: BazaarColumn) -> pd.Series: ...
-
-    @overload
-    def __getitem__(self, key: Any) -> Any: ...
-
-    def __getitem__(self, key: Any) -> Any:
-        return super().__getitem__(key)
+_STATUS_COLUMNS = columns[1:]
 
 
 def fetch_bazaar(
     *, url: str = BAZAAR_URL, client: Any | None = None, timeout: float = 10.0
-) -> BazaarDataFrame:
-    """Return one row per Bazaar product, preserving API values unchanged."""
+) -> pd.DataFrame:
     import httpx
 
     owns_client = client is None
@@ -64,12 +33,10 @@ def fetch_bazaar(
     finally:
         if owns_client:
             client.close()
-
-    products = payload.get("products", {})
-    rows: list[dict[str, Any]] = []
-    for item_id, product in products.items():
+    rows = []
+    for item_id, product in payload.get("products", {}).items():
         status = product.get("quick_status", {})
         rows.append(
             {"item_id": item_id, **{key: status.get(key) for key in _STATUS_COLUMNS}}
         )
-    return BazaarDataFrame(rows, columns=columns)
+    return pd.DataFrame(rows, columns=columns)

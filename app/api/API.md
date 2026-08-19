@@ -19,14 +19,14 @@ GET https://api.hypixel.net/v2/skyblock/bazaar
 対象フィールド:
 
 ```text
-buyPrice
-buyVolume
-sellPrice
-sellVolume
-buyMovingWeek
-sellMovingWeek
-buyOrders
-sellOrders
+buyPrice        # Sell Order価格/Instant Buy価格
+buyVolume       # Buy Orderアイテム総数
+sellPrice       # Buy Order価格/Instant Sell価格
+sellVolume      # Sell Orderアイテム総数
+buyMovingWeek   # 過去7日間のInstant Buy
+sellMovingWeek  # 過去7日間のInstant Sell
+buyOrders       # Buy Order件数
+sellOrders      # Sell Order件数
 ```
 
 DataFrame では API のフィールド名をそのまま使用する。item ID は `products` のキーを使用する。
